@@ -4,8 +4,10 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const notificationRoutes = require('./routes/notification');
 const cors = require('cors');
 const admin = require('firebase-admin'); 
+
 
 // --- IMPORTATION DES GESTIONNAIRES ---
 const authRoutes = require('./routes/auth');
@@ -20,6 +22,7 @@ admin.initializeApp({
 const app = express();
 app.use(cors());
 app.use(express.json()); 
+app.use('/api/notifications', notificationRoutes); 
 
 const server = http.createServer(app);
 const io = new Server(server, {
