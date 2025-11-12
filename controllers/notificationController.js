@@ -1,40 +1,54 @@
 const admin = require('firebase-admin');
 
-/**
- * [POST] /api/notifications/send-global
- * Envoie un message à tous les utilisateurs abonnés au topic 'global_alerts'
- */
 const sendGlobalNotification = async (req, res) => {
   try {
-    // 1. On récupère le titre et le message du corps de la requête
-    // (Dans un vrai projet, seul un admin pourrait appeler ça)
+    const io = req.io;
+    const db = admin.firestore();
     const { title, body } = req.body;
 
     if (!title || !body) {
       return res.status(400).send({ error: 'Le "title" et le "body" sont requis.' });
     }
 
-    // 2. On définit le "payload" (le message)
-    const message = {
-      notification: {
-        title: title, // ex: "Alerte Sanitaire"
-        body: body,   // ex: "Restez chez vous, épidémie..."
-      },
-      // 3. On définit la "cible" :
-      // C'est le concept clé. On n'envoie pas à chaque téléphone un par un.
-      // On envoie au "Topic" (sujet) 'global_alerts'.
-      // (Notre app Flutter s'abonnera à ce topic).
-      topic: 'global_alerts' 
+    const notificationData = {
+      title: title,
+      body: body,
+      timestamp: new Date(), 
     };
 
-    // 4. On envoie le message via le SDK Admin
-    const response = await admin.messaging().send(message);
-    console.log('Notification envoyée avec succès:', response);
+    // --- ACTION 1 (Sauvegarder) ---
+    const docRef = await db.collection('notifications_globales').add(notificationData);
+    console.log('Notification sauvegardée dans Firestore:', docRef.id);
+
+    // --- ACTION 2 (Émettre sur Socket.io) ---
     
-    res.status(200).send({ success: true, messageId: response });
+    // CORRECTION ICI : On crée un nouvel objet
+    // qui contient l'ID ET les données
+    const finalNotificationData = {
+      id: docRef.id,
+      ...notificationData
+    };
+    
+    // Et on émet ce nouvel objet (qui a l'ID)
+    io.emit('nouvelle_notification', finalNotificationData);
+    console.log('Événement Socket.io "nouvelle_notification" émis.');
+
+    // --- ACTION 3 (Envoyer le Push FCM) ---
+    const message = {
+      notification: { title: title, body: body },
+      topic: 'global_alerts'
+    };
+    const fcmResponse = await admin.messaging().send(message);
+    console.log('Notification Push (FCM) envoyée:', fcmResponse);
+    
+    res.status(200).send({ 
+      success: true, 
+      messageId: fcmResponse,
+      firestoreId: docRef.id 
+    });
 
   } catch (error) {
-    console.error('Erreur envoi notification:', error);
+    console.error('Erreur envoi notification (globale):', error);
     res.status(500).send({ error: 'Erreur interne du serveur.' });
   }
 };

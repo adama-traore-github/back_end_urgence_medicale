@@ -58,6 +58,32 @@ function initializeSocket(io) {
         socket.emit('erreur_alerte', { message: 'Impossible de créer l\'alerte' });
       }
     });
+
+
+
+    socket.on('demander_historique_notifications', async () => {
+      try {
+        const db = admin.firestore();
+        const snapshot = await db.collection('notifications_globales')
+                                 .orderBy('timestamp', 'desc') // Les plus récentes en premier
+                                 .limit(50) // On limite aux 50 dernières
+                                 .get();
+
+        // On transforme les documents en une liste propre
+        const historique = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        // On renvoie l'historique SEULEMENT à ce client
+        socket.emit('historique_notifications', historique);
+        console.log(`Historique envoyé au client ${socket.id}`);
+
+      } catch (error) {
+        console.error("Erreur envoi historique:", error);
+        socket.emit('erreur_notification', { message: "Impossible de récupérer l'historique" });
+      }
+    });
     
   });
 }
