@@ -11,6 +11,8 @@ const admin = require('firebase-admin');
 const authRoutes = require('./routes/auth');
 const notificationRoutes = require('./routes/notification'); // C'est bon
 const initializeSocket = require('./socket/socketHandler'); 
+const etablissementRoutes = require('./routes/etablissement');
+const profilRoutes = require('./routes/profil');
 
 // 2. Initialisations
 const serviceAccount = require('./serviceAccountKey.json');
@@ -44,6 +46,9 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => res.send('Serveur Express est en ligne.'));
 app.use('/api', authRoutes);
 app.use('/api/notifications', notificationRoutes); // C'est bon
+app.use('/api/etablissements', etablissementRoutes);
+app.use('/api/profil', profilRoutes);
+
 
 // --- GESTION DES SOCKETS (Temps Réel) ---
 initializeSocket(io); // On délègue toujours le travail
