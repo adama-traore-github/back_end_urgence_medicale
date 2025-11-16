@@ -1,81 +1,34 @@
-// On importe le SDK Admin pour pouvoir parler à Firestore
 const admin = require('firebase-admin');
 
 function initializeSocket(io) {
   
   io.on('connection', (socket) => {
     
-    console.log(`🔌 Client connecté (socket): ${socket.id}`);
+    // --- 1. CORRECTION ICI ---
+    // On vérifie si 'socket.user' existe avant d'essayer de lire 'uid'
+    console.log(`🔌 Client connecté (socket): ${socket.id} (Utilisateur: ${socket.user ? socket.user.uid : 'Anonyme'})`);
 
-    // Événement quand le client se déconnecte
     socket.on('disconnect', () => {
-      console.log(`❌ Client déconnecté (socket): ${socket.id}`);
+      // --- 2. CORRECTION ICI ---
+      console.log(`❌ Client déconnecté (socket): ${socket.id} (Utilisateur: ${socket.user ? socket.user.uid : 'Anonyme'})`);
     });
+    // --- FIN DES CORRECTIONS ---
 
-    // --- C'EST LA NOUVELLE PARTIE ---
-    // On écoute l'événement 'envoyer_alerte' qui viendra de Flutter
-    socket.on('envoyer_alerte', async (data) => {
-      try {
-        console.log(`Alerte reçue du client (${socket.id}):`, data);
-
-        // 1. (Optionnel) On pourrait récupérer l'UID de l'utilisateur
-        // (on verra comment ajouter l'authentification aux sockets plus tard)
-        
-        // 2. On crée l'alerte dans la base de données Firestore
-        // (Assure-toi d'avoir activé Firestore dans ta console Firebase)
-        const db = admin.firestore();
-        const alerteRef = await db.collection('alertes').add({
-          statut: 'nouveau',
-          gps: data.gps || null, // On prend le GPS envoyé par Flutter
-          infos: data.infos || '', // Infos (ex: 'blessure saignement')
-          createdAt: new Date(),
-          clientId: socket.id
-        });
-
-        console.log(`Alerte créée dans Firestore avec l'ID: ${alerteRef.id}`);
-
-        // 3. On informe le client que l'alerte est "reçue" (étape 1)
-        socket.emit('statut_alerte_change', { statut: 'reçue', id: alerteRef.id });
-
-        // 4. On SIMULE le travail du service d'urgence (attendre 5 secondes)
-        setTimeout(async () => {
-          try {
-            // 5. On met à jour l'alerte dans Firestore
-            await alerteRef.update({ statut: 'en_cours_de_traitement' });
-            
-            // 6. On envoie le nouveau statut au client
-            console.log(`Alerte ${alerteRef.id} mise à jour: en_cours_de_traitement`);
-            socket.emit('statut_alerte_change', { statut: 'en_cours_de_traitement', id: alerteRef.id });
-
-          } catch (e) {
-            console.error("Erreur (timeout simulation):", e);
-          }
-        }, 5000); // 5000ms = 5 secondes
-
-      } catch (error) {
-        console.error('Erreur lors de la création de l\'alerte:', error);
-        // Informer le client que l'alerte a échoué
-        socket.emit('erreur_alerte', { message: 'Impossible de créer l\'alerte' });
-      }
-    });
-
-
-
+    
+    // --- ÉVÉNEMENT 1: DEMANDE D'HISTORIQUE (Inchangé) ---
     socket.on('demander_historique_notifications', async () => {
       try {
         const db = admin.firestore();
         const snapshot = await db.collection('notifications_globales')
-                                 .orderBy('timestamp', 'desc') // Les plus récentes en premier
-                                 .limit(50) // On limite aux 50 dernières
+                                 .orderBy('timestamp', 'desc') 
+                                 .limit(50)
                                  .get();
 
-        // On transforme les documents en une liste propre
         const historique = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
 
-        // On renvoie l'historique SEULEMENT à ce client
         socket.emit('historique_notifications', historique);
         console.log(`Historique envoyé au client ${socket.id}`);
 
@@ -84,7 +37,75 @@ function initializeSocket(io) {
         socket.emit('erreur_notification', { message: "Impossible de récupérer l'historique" });
       }
     });
-    
+
+
+    // --- ÉVÉNEMENT 2: ALERTE CIBLÉE (Inchangé) ---
+    socket.on('envoyer_alerte_hopital', async (data) => {
+      try {
+        const db = admin.firestore();
+        let profilData = {}; 
+        let utilisateurInfo = { uid: null, email: 'anonyme' }; 
+
+        // On vérifie si l'utilisateur est connecté
+        if (socket.user) {
+          console.log(`Alerte reçue de l'utilisateur: ${socket.user.uid}`);
+          utilisateurInfo = { uid: socket.user.uid, email: socket.user.email };
+
+          // On vérifie le "boolean" (Ton idée)
+          if (data.estPourMoi === true) {
+            console.log("-> L'alerte concerne l'utilisateur, on cherche son profil...");
+            const profilRef = db.collection('profils').doc(socket.user.uid);
+            const profilDoc = await profilRef.get();
+            if (profilDoc.exists) {
+              profilData = profilDoc.data();
+            }
+          } else {
+            console.log("-> L'alerte concerne un témoin (utilisateur authentifié).");
+          }
+        } else {
+          console.log(`Alerte reçue d'un utilisateur anonyme: ${socket.id}`);
+        }
+        
+        // ... (Le reste du code est inchangé et correct) ...
+        const alerteComplete = {
+          utilisateur: { 
+            ...utilisateurInfo, 
+            ...profilData      
+          },
+          alerte: {
+            hopitalId: data.hopitalId, 
+            hopitalNom: data.hopitalNom,
+            messageUtilisateur: data.message,
+            gpsUtilisateur: data.gps,
+          },
+          statut: 'reçue',
+          timestamp: new Date(),
+        };
+
+        const alerteRef = await db.collection('alertes_hopitaux').add(alerteComplete);
+        console.log(`Alerte sauvegardée dans Firestore: ${alerteRef.id}`);
+
+        // Simulation de chat
+        socket.emit('statut_alerte_hopital', { type: 'statut', message: 'reçue' });
+        
+        setTimeout(() => { 
+          console.log(`Alerte ${alerteRef.id} -> Hôpital en train d'écrire`);
+          // On utilise des guillemets doubles pour l'apostrophe
+          socket.emit('statut_alerte_hopital', { type: 'typing', message: "Hôpital en train d'écrire..." });
+         }, 5000);
+         
+        setTimeout(() => { 
+          const messageRassurant = "Ne bougez pas de l'endroit où vous êtes. Suivez les guides de premiers soins sur l'accueil si possible. Une équipe est en route. Ne paniquez pas.";
+          console.log(`Alerte ${alerteRef.id} -> Message envoyé`);
+          socket.emit('statut_alerte_hopital', { type: 'message', message: messageRassurant });
+         }, 10000);
+
+      } catch (error) {
+        console.error("Erreur lors de l'alerte hôpital:", error);
+        socket.emit('erreur_alerte_hopital', { message: "Votre alerte n'a pas pu être envoyée." });
+      }
+    });
+
   });
 }
 

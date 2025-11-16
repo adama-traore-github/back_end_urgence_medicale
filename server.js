@@ -9,10 +9,10 @@ const admin = require('firebase-admin');
 
 // --- IMPORTATION DES GESTIONNAIRES ---
 const authRoutes = require('./routes/auth');
-const notificationRoutes = require('./routes/notification'); // C'est bon
-const initializeSocket = require('./socket/socketHandler'); 
+const notificationRoutes = require('./routes/notification');
 const etablissementRoutes = require('./routes/etablissement');
 const profilRoutes = require('./routes/profil');
+const initializeSocket = require('./socket/socketHandler'); 
 
 // 2. Initialisations
 const serviceAccount = require('./serviceAccountKey.json');
@@ -31,27 +31,53 @@ const io = new Server(server, {
 
 const PORT = 3000;
 
-// --- LE PONT (MIDDLEWARE) : C'EST L'AJOUT IMPORTANT ---
-// On injecte 'io' dans toutes les requêtes pour
-// que nos contrôleurs puissent l'utiliser.
+// --- LE PONT (MIDDLEWARE REST) ---
+// Injecte 'io' dans les requêtes API (pour les contrôleurs)
 app.use((req, res, next) => {
-  req.io = io; // 'io' est maintenant disponible dans req.io
-  next(); // Passe à la route suivante
+  req.io = io; 
+  next(); 
 });
-// --- FIN DE L'AJOUT ---
 
 
 // --- ROUTES API (REST) ---
-// On les place APRÈS le middleware
 app.get('/', (req, res) => res.send('Serveur Express est en ligne.'));
 app.use('/api', authRoutes);
-app.use('/api/notifications', notificationRoutes); // C'est bon
+app.use('/api/notifications', notificationRoutes); 
 app.use('/api/etablissements', etablissementRoutes);
 app.use('/api/profil', profilRoutes);
 
 
 // --- GESTION DES SOCKETS (Temps Réel) ---
-initializeSocket(io); // On délègue toujours le travail
+
+// --- 3. LE "GARDE DU CORPS" SOCKET.IO (MIS À JOUR) ---
+// Il laisse passer tout le monde, mais il "tag" les utilisateurs
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth.token;
+
+  if (token) {
+    // Un token est fourni. On essaie de le vérifier.
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      socket.user = decodedToken; // Utilisateur authentifié
+      console.log(`Auth Socket: Connexion authentifiée (UID: ${decodedToken.uid})`);
+    } catch (error) {
+      // Token fourni mais invalide (expiré, faux...)
+      console.log("Auth Socket: Connexion anonyme (token invalide).");
+      socket.user = null; // Traité comme anonyme
+    }
+  } else {
+    // Pas de token fourni.
+    console.log("Auth Socket: Connexion anonyme.");
+    socket.user = null; // Traité comme anonyme
+  }
+  
+  next(); // <-- ON LAISSE TOUJOURS PASSER
+});
+// --- FIN DE LA MODIFICATION ---
+// --- FIN DU BLOC ---
+
+// On délègue le reste du travail (les 'socket.on') au handler
+initializeSocket(io); 
 
 // --- DÉMARRAGE ---
 server.listen(PORT, () => {
