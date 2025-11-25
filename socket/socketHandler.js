@@ -4,15 +4,12 @@ function initializeSocket(io) {
   
   io.on('connection', (socket) => {
     
-    // --- 1. CORRECTION ICI ---
     // On vérifie si 'socket.user' existe avant d'essayer de lire 'uid'
-    console.log(`🔌 Client connecté (socket): ${socket.id} (Utilisateur: ${socket.user ? socket.user.uid : 'Anonyme'})`);
+    console.log(` Client connecté (socket): ${socket.id} (Utilisateur: ${socket.user ? socket.user.uid : 'Anonyme'})`);
 
     socket.on('disconnect', () => {
-      // --- 2. CORRECTION ICI ---
-      console.log(`❌ Client déconnecté (socket): ${socket.id} (Utilisateur: ${socket.user ? socket.user.uid : 'Anonyme'})`);
+      console.log(` Client déconnecté (socket): ${socket.id} (Utilisateur: ${socket.user ? socket.user.uid : 'Anonyme'})`);
     });
-    // --- FIN DES CORRECTIONS ---
 
     
     // --- ÉVÉNEMENT 1: DEMANDE D'HISTORIQUE (Inchangé) ---
@@ -103,6 +100,34 @@ function initializeSocket(io) {
       } catch (error) {
         console.error("Erreur lors de l'alerte hôpital:", error);
         socket.emit('erreur_alerte_hopital', { message: "Votre alerte n'a pas pu être envoyée." });
+      }
+    });
+
+
+
+    // --- ÉVÉNEMENT 3: DEMANDE LISTE ÉTABLISSEMENTS  ---
+
+
+    socket.on('demander_etablissements', async () => {
+      try {
+        console.log(`Demande d'établissements reçue de ${socket.id}`);
+        const db = admin.firestore();
+        
+        // On récupère toute la collection
+        const snapshot = await db.collection('etablissements').get();
+        
+        // On formate en liste JSON
+        const liste = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        // On renvoie la liste au téléphone
+        socket.emit('reception_etablissements', liste);
+        console.log(`Liste de ${liste.length} établissements envoyée via Socket.`);
+
+      } catch (error) {
+        console.error("Erreur envoi établissements:", error);
       }
     });
 

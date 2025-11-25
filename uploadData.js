@@ -1,8 +1,7 @@
-// Ce script est indépendant de notre serveur.
-// Son seul but est de lire 'data.json' et de le pousser sur Firestore.
+
 
 const admin = require('firebase-admin');
-const fs = require('fs'); // Pour lire le fichier (File System)
+const fs = require('fs'); 
 
 // 1. Initialiser Firebase Admin (comme dans server.js)
 const serviceAccount = require('./serviceAccountKey.json');
@@ -17,7 +16,6 @@ const db = admin.firestore();
 const rawData = fs.readFileSync('data.json');
 const data = JSON.parse(rawData);
 
-// Notre collection cible dans Firestore
 const collectionRef = db.collection('etablissements');
 
 /**

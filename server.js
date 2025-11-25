@@ -6,6 +6,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const admin = require('firebase-admin'); 
+const cron = require('node-cron'); 
 
 // --- IMPORTATION DES GESTIONNAIRES ---
 const authRoutes = require('./routes/auth');
@@ -13,6 +14,9 @@ const notificationRoutes = require('./routes/notification');
 const etablissementRoutes = require('./routes/etablissement');
 const profilRoutes = require('./routes/profil');
 const initializeSocket = require('./socket/socketHandler'); 
+
+// --- IMPORTATION DU SERVICE DE MISE À JOUR (Le Robot) ---
+const { inverseGarde } = require('./statusUpdater'); 
 
 // 2. Initialisations
 const serviceAccount = require('./serviceAccountKey.json');
@@ -49,37 +53,45 @@ app.use('/api/profil', profilRoutes);
 
 // --- GESTION DES SOCKETS (Temps Réel) ---
 
-// --- 3. LE "GARDE DU CORPS" SOCKET.IO (MIS À JOUR) ---
+// 3. LE "GARDE DU CORPS" SOCKET.IO
 // Il laisse passer tout le monde, mais il "tag" les utilisateurs
 io.use(async (socket, next) => {
   const token = socket.handshake.auth.token;
 
   if (token) {
-    // Un token est fourni. On essaie de le vérifier.
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
-      socket.user = decodedToken; // Utilisateur authentifié
+      socket.user = decodedToken; 
       console.log(`Auth Socket: Connexion authentifiée (UID: ${decodedToken.uid})`);
     } catch (error) {
-      // Token fourni mais invalide (expiré, faux...)
       console.log("Auth Socket: Connexion anonyme (token invalide).");
-      socket.user = null; // Traité comme anonyme
+      socket.user = null; 
     }
   } else {
-    // Pas de token fourni.
     console.log("Auth Socket: Connexion anonyme.");
-    socket.user = null; // Traité comme anonyme
+    socket.user = null; 
   }
   
-  next(); // <-- ON LAISSE TOUJOURS PASSER
+  next(); 
 });
-// --- FIN DE LA MODIFICATION ---
-// --- FIN DU BLOC ---
 
-// On délègue le reste du travail (les 'socket.on') au handler
+// On lance le gestionnaire des événements (Chat, Alerte, etc.)
 initializeSocket(io); 
+
+
+// --- TÂCHE PLANIFIÉE (CRON JOB) ---
+// S'exécute toutes les 5 minutes pour simuler le changement de gardes
+// cron.schedule('*/5 * * * *', () => {
+//   console.log('⏰ CRON 5min: Lancement de l\'inversion des gardes...');
+//   // On appelle la fonction d'inversion et on passe 'io' pour prévenir les mobiles
+//   inverseGarde(io);
+// });
+
 
 // --- DÉMARRAGE ---
 server.listen(PORT, () => {
   console.log(`🚀 Le serveur écoute sur http://localhost:${PORT}`);
+  
+  // Optionnel: Lancer une inversion au démarrage pour tester tout de suite
+  // inverseGarde(io);
 });

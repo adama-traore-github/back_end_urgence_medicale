@@ -22,8 +22,6 @@ const sendGlobalNotification = async (req, res) => {
 
     // --- ACTION 2 (Émettre sur Socket.io) ---
     
-    // CORRECTION ICI : On crée un nouvel objet
-    // qui contient l'ID ET les données
     const finalNotificationData = {
       id: docRef.id,
       ...notificationData
