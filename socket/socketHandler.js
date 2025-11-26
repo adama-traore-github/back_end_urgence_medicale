@@ -1,9 +1,9 @@
 const admin = require('firebase-admin');
 
 function initializeSocket(io) {
-  
+
   io.on('connection', (socket) => {
-    
+
     // On vérifie si 'socket.user' existe avant d'essayer de lire 'uid'
     console.log(` Client connecté (socket): ${socket.id} (Utilisateur: ${socket.user ? socket.user.uid : 'Anonyme'})`);
 
@@ -11,15 +11,15 @@ function initializeSocket(io) {
       console.log(` Client déconnecté (socket): ${socket.id} (Utilisateur: ${socket.user ? socket.user.uid : 'Anonyme'})`);
     });
 
-    
+
     // --- ÉVÉNEMENT 1: DEMANDE D'HISTORIQUE (Inchangé) ---
     socket.on('demander_historique_notifications', async () => {
       try {
         const db = admin.firestore();
         const snapshot = await db.collection('notifications_globales')
-                                 .orderBy('timestamp', 'desc') 
-                                 .limit(50)
-                                 .get();
+          .orderBy('timestamp', 'desc')
+          .limit(50)
+          .get();
 
         const historique = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -40,8 +40,8 @@ function initializeSocket(io) {
     socket.on('envoyer_alerte_hopital', async (data) => {
       try {
         const db = admin.firestore();
-        let profilData = {}; 
-        let utilisateurInfo = { uid: null, email: 'anonyme' }; 
+        let profilData = {};
+        let utilisateurInfo = { uid: null, email: 'anonyme' };
 
         // On vérifie si l'utilisateur est connecté
         if (socket.user) {
@@ -62,15 +62,15 @@ function initializeSocket(io) {
         } else {
           console.log(`Alerte reçue d'un utilisateur anonyme: ${socket.id}`);
         }
-        
+
         // ... (Le reste du code est inchangé et correct) ...
         const alerteComplete = {
-          utilisateur: { 
-            ...utilisateurInfo, 
-            ...profilData      
+          utilisateur: {
+            ...utilisateurInfo,
+            ...profilData
           },
           alerte: {
-            hopitalId: data.hopitalId, 
+            hopitalId: data.hopitalId,
             hopitalNom: data.hopitalNom,
             messageUtilisateur: data.message,
             gpsUtilisateur: data.gps,
@@ -84,18 +84,18 @@ function initializeSocket(io) {
 
         // Simulation de chat
         socket.emit('statut_alerte_hopital', { type: 'statut', message: 'reçue' });
-        
-        setTimeout(() => { 
+
+        setTimeout(() => {
           console.log(`Alerte ${alerteRef.id} -> Hôpital en train d'écrire`);
           // On utilise des guillemets doubles pour l'apostrophe
           socket.emit('statut_alerte_hopital', { type: 'typing', message: "Hôpital en train d'écrire..." });
-         }, 5000);
-         
-        setTimeout(() => { 
+        }, 5000);
+
+        setTimeout(() => {
           const messageRassurant = "Ne bougez pas de l'endroit où vous êtes. Suivez les guides de premiers soins sur l'accueil si possible. Une équipe est en route. Ne paniquez pas.";
           console.log(`Alerte ${alerteRef.id} -> Message envoyé`);
           socket.emit('statut_alerte_hopital', { type: 'message', message: messageRassurant });
-         }, 10000);
+        }, 10000);
 
       } catch (error) {
         console.error("Erreur lors de l'alerte hôpital:", error);
@@ -112,10 +112,10 @@ function initializeSocket(io) {
       try {
         console.log(`Demande d'établissements reçue de ${socket.id}`);
         const db = admin.firestore();
-        
+
         // On récupère toute la collection
         const snapshot = await db.collection('etablissements').get();
-        
+
         // On formate en liste JSON
         const liste = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -134,4 +134,20 @@ function initializeSocket(io) {
   });
 }
 
-module.exports = initializeSocket;
+// --- FONCTION 4: NOTIFICATION DE MISE À JOUR (Pour le CronJob) ---
+function envoyerNotificationMiseAJour(io) {
+  if (io) {
+    io.emit('maj_etablissements', {
+      message: "Mise à jour  effectuée.",
+      timestamp: new Date()
+    });
+    console.log(" Notification 'maj_etablissements' envoyée via Socket.io");
+  } else {
+    console.log(" Attention: Socket.io non initialisé, impossible d'envoyer la notification.");
+  }
+}
+
+module.exports = {
+  initializeSocket,
+  envoyerNotificationMiseAJour
+};

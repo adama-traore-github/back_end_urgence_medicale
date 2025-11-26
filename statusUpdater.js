@@ -1,23 +1,23 @@
 const admin = require('firebase-admin');
+const { envoyerNotificationMiseAJour } = require('./socket/socketHandler');
 
 /**
  * Fonction qui INVERSE les statuts de garde
  * true → false
  * false → true
+ * Pour TOUS les types d'établissements
  */
 async function inverseGarde(io) {
-  console.log(" [INVERSION] Début de l'inversion des statuts de garde...");
+  console.log(" [INVERSION] Début de l'inversion des statuts de garde pour TOUS les établissements...");
 
   try {
     const db = admin.firestore();
 
-    // Récupérer toutes les pharmacies
-    const snapshot = await db.collection('etablissements')
-      .where('type', '==', 'pharmacy')
-      .get();
+    // Récupérer TOUS les établissements (sans filtre de type)
+    const snapshot = await db.collection('etablissements').get();
 
     if (snapshot.empty) {
-      console.log("Aucune pharmacie trouvée.");
+      console.log("Aucun établissement trouvé.");
       return;
     }
 
@@ -49,23 +49,33 @@ async function inverseGarde(io) {
 
     console.log("------------------------------------------------");
     console.log(" Inversion terminée !");
-    console.log(`Maintenant en garde : ${countTrue}`);
-    console.log(`Maintenant NON garde : ${countFalse}`);
+    console.log(`Établissements maintenant en garde : ${countTrue}`);
+    console.log(`Établissements maintenant NON en garde : ${countFalse}`);
     console.log("------------------------------------------------");
 
-    // Notifier les mobiles
-    if (io) {
-      io.emit('maj_etablissements', {
-        message: "Inversion des statuts de garde effectuée.",
-        timestamp: new Date()
-      });
-
-      console.log(" Événement envoyé via Socket.io");
-    }
+    // Notifier les mobiles via la fonction dédiée du socketHandler
+    envoyerNotificationMiseAJour(io);
 
   } catch (error) {
-    console.error("Erreur inversion:", error);
+    console.error("Erreur lors de l'inversion des statuts :", error);
+    throw error; // Important pour gérer les erreurs en amont
   }
+}
+
+// Point d'entrée si le fichier est exécuté directement
+if (require.main === module) {
+  const serviceAccount = require('./chemin/vers/votre/clef-firebase.json'); // Ajustez le chemin
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+
+  inverseGarde()
+    .then(() => process.exit(0))
+    .catch(error => {
+      console.error("Erreur critique :", error);
+      process.exit(1);
+    });
 }
 
 module.exports = { inverseGarde };

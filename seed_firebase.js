@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./serviceAccountKey.json'); 
+const serviceAccount = require('./serviceAccountKey.json');
 
 // 1. Initialisation de Firebase Admin
 admin.initializeApp({
@@ -7,12 +7,12 @@ admin.initializeApp({
 });
 
 const db = admin.firestore();
-const COLLECTION_NAME = 'etablissements'; 
+const COLLECTION_NAME = 'etablissements';
 
 async function seedPhones() {
   try {
     console.log(' Récupération des documents...');
-    
+
     // On récupère tous les établissements
     const snapshot = await db.collection(COLLECTION_NAME).get();
 
@@ -23,7 +23,7 @@ async function seedPhones() {
 
     console.log(` Analyse de ${snapshot.size} documents...`);
 
-    
+
     let updatedCount = 0;
     let ignoredCount = 0;
     let preservedCount = 0;
@@ -32,25 +32,25 @@ async function seedPhones() {
 
     snapshot.forEach(doc => {
       const data = doc.data();
-      const phone = data.telephone; 
+      const phone = data.telephone;
 
       if (phone && phone !== '' && phone !== '00000000') {
         preservedCount++;
-        return; 
+        return;
       }
 
-      
-      if (Math.random() < 0.1) {
+
+      if (Math.random() < 0.80) {
         const updatePromise = doc.ref.update({ telephone: '00000000' });
         updates.push(updatePromise);
         updatedCount++;
       } else {
-        
+
         ignoredCount++;
       }
     });
 
-    console.log(`⏳ Écriture de ${updates.length} mises à jour...`);
+    console.log(`Écriture de ${updates.length} mises à jour...`);
     await Promise.all(updates);
 
     console.log('-----------------------------------');
@@ -63,7 +63,7 @@ async function seedPhones() {
   } catch (error) {
     console.error(' Erreur :', error);
   } finally {
-    
+
   }
 }
 
