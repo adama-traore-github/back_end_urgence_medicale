@@ -169,7 +169,3 @@ curl -X POST http://localhost:3000/api/notifications/send-global \
 }'
 ```
 
-## 📝 Auteur
-
-Projet développé par **Adama TRAORE**.
-
