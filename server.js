@@ -92,6 +92,5 @@ cron.schedule('*/5 * * * *', () => {
 server.listen(PORT, () => {
   console.log(`Le serveur écoute sur http://localhost:${PORT}`);
 
-  // Optionnel: Lancer une inversion au démarrage pour tester tout de suite
-  // inverseGarde(io);
+
 });

@@ -37,7 +37,7 @@ const updateProfil = async (req, res) => {
     // 1. On récupère l'UID (fourni par le middleware)
     const uid = req.user.uid;
     // 2. On récupère les 10 champs (ou moins) envoyés par Flutter
-    const data = req.body; 
+    const data = req.body;
     const db = admin.firestore();
 
     // 3. On crée la référence au document (profils/mon-uid)
