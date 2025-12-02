@@ -75,6 +75,25 @@ Décommentez seulement si vous devez tester la mise à jour automatique.
 
 ## ▶️ Démarrage
 
+### 1. Initialisation des données (Obligatoire au premier lancement)
+
+Avant de lancer le serveur, vous devez peupler la base de données Firebase, sinon l'application sera vide. Exécutez les commandes suivantes dans l'ordre :
+
+```bash
+# 1. Importer les données réelles (Hôpitaux/Pharmacies)
+node uploadData.js
+
+# 2. Simuler les statuts d'ouverture (Garde)
+node simulateStatus.js
+
+# 3. Ajouter les numéros par défaut manquants
+node seed_firebase.js
+```
+
+### 2. Lancer le serveur
+
+Une fois la base de données prête :
+
 ```bash
 npm start
 ```
