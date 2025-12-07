@@ -1,9 +1,19 @@
+## 🛠️ Comment visualiser le diagramme ?
+
+Le diagramme ci-dessous est écrit dans le langage **PlantUML**. Pour le visualiser graphiquement :
+
+1. Copiez le code du bloc (entre les ```).
+2. Allez sur le site **[PlantUML](https://www.plantuml.com/plantuml/uml/)** ou tout autre éditeur PlantUML en ligne.
+3. Collez le code dans la zone d'édition.
+4. Le diagramme s'affiche.
+
+
+'''
 @startuml
 title Architecture Globale du Backend Urgence Médicale
 skinparam componentStyle rectangle
 skinparam linetype ortho
 skinparam monochrome false
-scale 1.5
 
 ' --- 1. COMPOSANTS EXTERNES ---
 package "Services\nExternes" #lightblue {
@@ -58,8 +68,8 @@ package "Serveur\nNode.js/Express" as Server #lightyellow {
 
 ' --- 3. OUTILS DÉVELOPPEMENT ---
 package "Scripts Utilitaires" #lightpink {
-  [uploadData.js\n(batch OSM)]
-  [seed_firebase.js\n(peuplement)]
+  [uploadData.js\n(test manuel OSM)]
+  [seed_firebase.js\n(test manuel)]
   [simulateStatus.js\n(test manuel)]
 }
 
@@ -92,7 +102,7 @@ FCM --> Client : "Notifications"
 SocketIO --> Client : "Événements Temps Réel"
 
 ' Flux Scripts
-Scripts --> Firestore : "Données OSM\nPeuplement\nTests"
+Scripts --> Firestore : "Données OSM\nTests manuels"
 
 ' --- 5. NOTES DÉTAILLÉES ---
 note top of Server
@@ -132,8 +142,8 @@ end note
 note right of Scripts
   <b>Scripts Utilitaires</b>
   -------------------------
-  • uploadData.js : Import OSM
-  • seed_firebase.js : Peuplement
+  • uploadData.js : Test manuel OSM
+  • seed_firebase.js : Test manuel
   • simulateStatus.js : Test manuel
   (Exécution ligne de commande)
 end note
@@ -148,3 +158,5 @@ note bottom of Firestore
 end note
 
 @enduml
+
+'''

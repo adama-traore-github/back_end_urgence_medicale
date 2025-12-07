@@ -81,7 +81,7 @@ initializeSocket(io);
 
 // --- TÂCHE PLANIFIÉE (CRON JOB) ---
 // S'exécute toutes les 5 minutes pour simuler le changement de gardes
-cron.schedule('*/5 * * * *', () => {
+cron.schedule('*/1 * * * *', () => {
   console.log('CRON 5min: Lancement de l\'inversion des gardes...');
   // On appelle la fonction d'inversion et on passe 'io' pour prévenir les mobiles
   inverseGarde(io);

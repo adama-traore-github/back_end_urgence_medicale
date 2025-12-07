@@ -1,7 +1,7 @@
 
 
 const admin = require('firebase-admin');
-const fs = require('fs'); 
+const fs = require('fs');
 
 // 1. Initialiser Firebase Admin (comme dans server.js)
 const serviceAccount = require('./serviceAccountKey.json');
@@ -38,17 +38,17 @@ async function upload() {
 
       // 5. On vérifie que c'est bien ce qu'on cherche
       if ((type === 'pharmacy' || type === 'hospital' || type === 'clinic') && nom) {
-        
+
         // 6. On prépare le document pour Firestore
         const docRef = collectionRef.doc(); // Crée un nouvel ID auto
-        
+
         const documentData = {
           nom: nom,
           type: type,
           // On utilise le type Geopoint de Firestore
-          position: new admin.firestore.GeoPoint(lat, lon), 
+          position: new admin.firestore.GeoPoint(lat, lon),
           // On ajoute le 'telephone' s'il existe (bonus)
-          telephone: element.tags.phone || null 
+          telephone: element.tags.phone || null
         };
 
         // 7. On ajoute l'opération au "batch"
