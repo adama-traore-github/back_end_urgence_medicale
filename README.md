@@ -92,7 +92,7 @@ node seed_firebase.js
 
 ### 2. Lancer le serveur
 
-Une fois la base de données prête :
+Une fois la base de données prête faites:
 
 ```bash
 npm start
